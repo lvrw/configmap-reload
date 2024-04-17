@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"time"
+	"io/ioutil"
 
 	fsnotify "github.com/fsnotify/fsnotify"
 	"github.com/prometheus/client_golang/prometheus"
@@ -131,7 +132,12 @@ func main() {
 						requestsByStatusCode.WithLabelValues(h.String(), strconv.Itoa(resp.StatusCode)).Inc()
 						if resp.StatusCode != *webhookStatusCode {
 							setFailureMetrics(h.String(), "client_response")
-							log.Println("error:", "Received response code", resp.StatusCode, ", expected", *webhookStatusCode)
+							body, err := ioutil.ReadAll(resp.Body)
+							if err != nil {
+								log.Println(err.Error())
+								return
+							}
+							log.Println("error:", "Received response code", resp.StatusCode, ", expected", *webhookStatusCode, string(body))
 							time.Sleep(time.Second * 10)
 							continue
 						}
